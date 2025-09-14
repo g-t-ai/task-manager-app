@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>タスク管理アプリ</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #f7f7f7; }
+    input, button, select { margin: 0.5rem; padding: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 2rem; background: white; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+    th { background: #eee; }
+    .completed { text-decoration: line-through; color: gray; }
+  </style>
+</head>
+<body>
+  <h1>📝 タスク管理</h1>
+
+  <input type="text" id="taskTitle" placeholder="タスク名">
+  <input type="text" id="taskTag" placeholder="タグ（例: 仕事, 勉強）">
+  <input type="date" id="taskDue" placeholder="期限">
+  <button onclick="addTask()">追加</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>タスク</th>
+        <th>タグ</th>
+        <th>期限</th>
+        <th>完了</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="taskList"></tbody>
+  </table>
+
+  <script>
+    async function fetchTasks() {
+      const res = await fetch('/api/tasks');
+      const tasks = await res.json();
+      const list = document.getElementById('taskList');
+      list.innerHTML = '';
+      tasks.forEach(task => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="${task.completed ? 'completed' : ''}">${task.title}</td>
+          <td>${task.tag || ''}</td>
+          <td>${task.dueDate ? new Date(task.dueDate).toLocaleDateString() : ''}</td>
+          <td><input type="checkbox" ${task.completed ? 'checked' : ''} onclick="toggleComplete(${task.id}, this.checked)"></td>
+          <td><button onclick="deleteTask(${task.id})">削除</button></td>
+        `;
+        list.appendChild(tr);
+      });
+    }
+
+    async function addTask() {
+  console.log('addTask() triggered');
+  const title = document.getElementById('taskTitle').value;
+  const tag = document.getElementById('taskTag').value;
+  const dueDate = document.getElementById('taskDue').value;
+  console.log({ title, tag, dueDate }); // ← 入力内容を表示
+
+      if (!title.trim()) return alert('タイトルを入力してください');
+      await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, tag, dueDate })
+      });
+      document.getElementById('taskTitle').value = '';
+      document.getElementById('taskTag').value = '';
+      document.getElementById('taskDue').value = '';
+      fetchTasks();
+    }
+
+    async function toggleComplete(id, completed) {
+      await fetch(`/api/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed })
+      });
+      fetchTasks();
+    }
+
+    async function deleteTask(id) {
+      await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      fetchTasks();
+    }
+
+    fetchTasks();
+  </script>
+</body>
+</html>
